@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Wechselkurs-Rechner – Bundesbank</title>
+
+<style>
+:root {
+    --bg: #f4f7fa;
+    --card: #ffffff;
+    --text: #263238;
+    --muted: #667781;
+    --blue: #2f83ad;
+    --blue-dark: #246b8d;
+    --head: #9eb3bd;
+    --line: #dbe4ea;
+    --row: #e7edf6;
+    --ok: #267a43;
+    --warning: #a86400;
+    --error: #b3261e;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    font-family: Segoe UI, Arial, sans-serif;
+    color: var(--text);
+}
+
+.wrap {
+    max-width: 1200px;
+    margin: 36px auto;
+    padding: 0 18px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.08);
+    padding: 26px;
+}
+
+h1 {
+    margin: 0 0 8px;
+    font-size: 26px;
+}
+
+h2 {
+    margin-top: 28px;
+    font-size: 20px;
+}
+
+.sub {
+    margin: 0 0 24px;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+input[type=month] {
+    padding: 10px 12px;
+    border: 1px solid #b8c6ce;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+button {
+    border: 0;
+    border-radius: 8px;
+    padding: 11px 18px;
+    background: var(--blue);
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--blue-dark);
+}
+
+button:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+button.secondary {
+    background: #708c99;
+}
+
+.status {
+    min-height: 24px;
+    margin: 8px 0 14px;
+    font-size: 14px;
+}
+
+.status.ok {
+    color: var(--ok);
+}
+
+.status.warning {
+    color: var(--warning);
+}
+
+.status.err {
+    color: var(--error);
+}
+
+.tablewrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 3px;
+    min-width: 760px;
+}
+
+th,
+td {
+    padding: 9px 12px;
+    text-align: right;
+}
+
+th {
+    background: var(--head);
+    color: white;
+    font-size: 13px;
+}
+
+th.group {
+    font-size: 14px;
+    text-align: center;
+    border-radius: 7px 7px 0 0;
+}
+
+th:first-child,
+td:first-child {
+    text-align: left;
+}
+
+tbody tr:nth-child(even) td {
+    background: var(--row);
+}
+
+tbody td {
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.currency {
+    font-weight: 700;
+}
+
+.small {
+    margin-top: 18px;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+code {
+    background: #eef3f6;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+#diagnostics {
+    display: none;
+    margin-top: 24px;
+}
+
+.diag-ok {
+    color: var(--ok);
+    font-weight: 700;
+}
+
+.diag-warning {
+    color: var(--warning);
+    font-weight: 700;
+}
+
+.diag-error {
+    color: var(--error);
+    font-weight: 700;
+}
+
+.api-url {
+    word-break: break-all;
+    font-size: 11px;
+}
+
+.summary-box {
+    margin-top: 18px;
+    background: #eef3f6;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+<div class="card">
+
+<h1>Wechselkurs-Rechner</h1>
+
+<p class="sub">
+Berechnung von Durchschnittskurs und Stichtagskurs
+auf Basis täglicher Wechselkurse der Deutschen Bundesbank.
+Geschäftsjahr: Oktober bis September.
+</p>
+
+<div class="controls">
+
+<div>
+<label for="month">Berichtsmonat</label>
+<input id="month" type="month">
+</div>
+
+<button id="calcBtn" type="button">
+Kurse berechnen
+</button>
+
+<button id="diagBtn" class="secondary" type="button">
+Diagnose anzeigen
+</button>
+
+</div>
+
+<div id="status" class="status"></div>
+
+<div class="tablewrap">
+
+<table>
+
+<thead>
+
+<tr>
+<th rowspan="2">Währung</th>
+<th colspan="2" class="group">Durchschnittskurs</th>
+<th colspan="2" class="group">Stichtagskurs</th>
+</tr>
+
+<tr>
+<th>Multiplikator</th>
+<th>Divisor</th>
+<th>Multiplikator</th>
+<th>Divisor</th>
+</tr>
+
+</thead>
+
+<tbody id="ratesBody"></tbody>
+
+</table>
+
+</div>
+
+
+<div id="diagnostics">
+
+<h2>Diagnose</h2>
+
+<div id="diagnosticSummary" class="summary-box">
+Noch keine Berechnung durchgeführt.
+</div>
+
+<div class="tablewrap">
+
+<table>
+
+<thead>
+<tr>
+<th>Währung</th>
+<th>Status</th>
+<th>Format</th>
+<th>Anzahl Werte</th>
+<th>Erster Wert</th>
+<th>Letzter Wert</th>
+<th>YTD Durchschnitt</th>
+<th>Stichtag</th>
+</tr>
+</thead>
+
+<tbody id="diagnosticBody"></tbody>
+
+</table>
+
+</div>
+
+
+<h2>Technische Details</h2>
+
+<div class="tablewrap">
+
+<table>
+
+<thead>
+<tr>
+<th>Währung</th>
+<th>HTTP</th>
+<th>Zeitreihe</th>
+<th>Format</th>
+<th>API-Adresse</th>
+<th>Hinweis</th>
+</tr>
+</thead>
+
+<tbody id="technicalBody"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<div class="small">
+
+<strong>Berechnungslogik</strong>
+
+<br><br>
+
+Geschäftsjahr:
+
+<br>
+
+<code>1. Oktober bis 30. September</code>
+
+<br><br>
+
+Beispiel Juli 2026:
+
+<br>
+
+<code>01.10.2025 bis 31.07.2026</code>
+
+<br><br>
+
+Der Durchschnittskurs ist der arithmetische Mittelwert
+aller verfügbaren täglichen Beobachtungen innerhalb dieses Zeitraums.
+
+<br><br>
+
+Der Stichtagskurs ist der letzte verfügbare Tageskurs
+am oder vor dem Ende des Berichtsmonats.
+
+<br><br>
+
+Bundesbank-Notation:
+
+<br>
+
+<code>1 EUR = x Fremdwährung</code>
+
+<br><br>
+
+Daraus:
+
+<br>
+
+<code>Divisor = x</code>
+
+<br>
+
+<code>Multiplikator = 1 / x</code>
+
+<br><br>
+
+Bei einem Fehler im CSV-Abruf versucht das Programm automatisch
+einen zweiten Abruf im SDMX-JSON-Format.
+
+</div>
+
+</div>
+</div>
+
+
+<script>
+
+/* ============================================================
+   EINSTELLUNGEN
+   ============================================================ */
+
+const currencies = [
+    "EUR",
+    "USD",
+    "GBP",
+    "PLN",
+    "SEK",
+    "BRL",
+    "CNY",
+    "RUB",
+    "INR"
+];
+
+const body = document.getElementById("ratesBody");
+const diagnosticBody = document.getElementById("diagnosticBody");
+const technicalBody = document.getElementById("technicalBody");
+const diagnosticSummary = document.getElementById("diagnosticSummary");
+const diagnostics = document.getElementById("diagnostics");
+const monthInput = document.getElementById("month");
+const calcBtn = document.getElementById("calcBtn");
+const diagBtn = document.getElementById("diagBtn");
+const statusEl = document.getElementById("status");
+
+
+/* ============================================================
+   HILFSFUNKTIONEN
+   ============================================================ */
+
+function pad(n) {
+    return String(n).padStart(2, "0");
+}
+
+
+function isoDate(d) {
+    return (
+        d.getFullYear()
+        + "-"
+        + pad(d.getMonth() + 1)
+        + "-"
+        + pad(d.getDate())
+    );
+}
+
+
+function germanDate(dateString) {
+
+    if (!dateString) {
+        return "—";
+    }
+
+    const parts = dateString.split("-");
+
+    if (parts.length !== 3) {
+        return dateString;
+    }
+
+    return parts[2] + "." + parts[1] + "." + parts[0];
+}
+
+
+function fmt(n) {
+
+    if (n == null || !Number.isFinite(n)) {
+        return "—";
+    }
+
+    return n.toLocaleString(
+        "de-DE",
+        {
+            minimumFractionDigits: 5,
+            maximumFractionDigits: 5
+        }
+    );
+}
+
+
+function setStatus(text, kind = "") {
+
+    statusEl.textContent = text;
+
+    statusEl.className =
+        "status"
+        +
+        (kind ? " " + kind : "");
+}
+
+
+/* ============================================================
+   LEERE TABELLE
+   ============================================================ */
+
+function renderEmpty() {
+
+    body.innerHTML = currencies.map(currency => {
+
+        const value =
+            currency === "EUR"
+            ? "1,00000"
+            : "—";
+
+        return `
+        <tr>
+            <td class="currency">${currency}</td>
+            <td>${value}</td>
+            <td>${value}</td>
+            <td>${value}</td>
+            <td>${value}</td>
+        </tr>
+        `;
+
+    }).join("");
+}
+
+renderEmpty();
+
+
+/* ============================================================
+   AKTUELLEN MONAT VOREINSTELLEN
+   ============================================================ */
+
+(function setDefaultMonth() {
+
+    const d = new Date();
+
+    monthInput.value =
+        d.getFullYear()
+        + "-"
+        + pad(d.getMonth() + 1);
+
+})();
+
+
+/* ============================================================
+   CSV PARSER
+   ============================================================ */
+
+function parseCSVLine(line, delimiter) {
+
+    const out = [];
+
+    let cur = "";
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i++) {
+
+        const ch = line[i];
+
+        if (ch === '"') {
+
+            if (
+                quoted
+                &&
+                line[i + 1] === '"'
+            ) {
+
+                cur += '"';
+                i++;
+
+            } else {
+
+                quoted = !quoted;
+            }
+
+        }
+
+        else if (
+            ch === delimiter
+            &&
+            !quoted
+        ) {
+
+            out.push(cur);
+            cur = "";
+
+        }
+
+        else {
+
+            cur += ch;
+        }
+    }
+
+    out.push(cur);
+
+    return out;
+}
+
+
+/* ============================================================
+   SDMX CSV PARSEN
+   ============================================================ */
+
+function parseSdmxCsv(text) {
+
+    const lines =
+        text
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .filter(x => x.trim() !== "");
+
+    if (lines.length < 2) {
+        return [];
+    }
+
+    const delimiter =
+        lines[0].split(";").length
+        >
+        lines[0].split(",").length
+        ? ";"
+        : ",";
+
+    const headers =
+        parseCSVLine(
+            lines[0],
+            delimiter
+        )
+        .map(
+            h =>
+            h
+            .trim()
+            .replace(/^"|"$/g, "")
+        );
+
+    const timeIdx =
+        headers.findIndex(
+            h =>
+            /^(TIME_PERIOD|date|time)$/i.test(h)
+        );
+
+    const valueIdx =
+        headers.findIndex(
+            h =>
+            /^(OBS_VALUE|value)$/i.test(h)
+        );
+
+    if (timeIdx < 0 || valueIdx < 0) {
+
+        throw new Error(
+            "CSV-Struktur konnte nicht erkannt werden."
+        );
+    }
+
+    const observations = [];
+
+    for (let i = 1; i < lines.length; i++) {
+
+        const cols =
+            parseCSVLine(
+                lines[i],
+                delimiter
+            );
+
+        const date =
+            cols[timeIdx]
+            ?.trim()
+            .replace(/^"|"$/g, "");
+
+        let raw =
+            cols[valueIdx]
+            ?.trim()
+            .replace(/^"|"$/g, "");
+
+        if (!raw) {
+            continue;
+        }
+
+        raw = raw.replace(",", ".");
+
+        const value = Number(raw);
+
+        if (
+            /^\d{4}-\d{2}-\d{2}$/.test(date)
+            &&
+            Number.isFinite(value)
+        ) {
+
+            observations.push({
+                date: date,
+                value: value
+            });
+        }
+    }
+
+    observations.sort(
+        (a, b) =>
+        a.date.localeCompare(b.date)
+    );
+
+    return observations;
+}
+
+
+/* ============================================================
+   SDMX JSON PARSEN
+
+   Der Parser sucht Zeitdimension und Beobachtungen dynamisch,
+   damit er nicht von einer festen Position abhängig ist.
+   ============================================================ */
+
+function parseSdmxJson(json) {
+
+    if (!json) {
+        return [];
+    }
+
+    const dataset =
+        json.dataSets?.[0];
+
+    const structure =
+        json.structure;
+
+    if (!dataset || !structure) {
+
+        throw new Error(
+            "SDMX-JSON-Struktur konnte nicht erkannt werden."
+        );
+    }
+
+    const observationDimensions =
+        structure.dimensions?.observation || [];
+
+    const timeDimension =
+        observationDimensions.find(
+            d =>
+            d.id === "TIME_PERIOD"
+            ||
+            d.name === "Time period"
+        );
+
+    if (!timeDimension) {
+
+        throw new Error(
+            "TIME_PERIOD wurde im JSON nicht gefunden."
+        );
+    }
+
+    const timeValues =
+        timeDimension.values || [];
+
+    let observationsObject =
+        dataset.observations;
+
+    /*
+    Manche SDMX-Ausgaben liegen innerhalb einer Serie.
+    */
+    if (!observationsObject && dataset.series) {
+
+        const firstSeriesKey =
+            Object.keys(dataset.series)[0];
+
+        if (firstSeriesKey) {
+
+            observationsObject =
+                dataset.series[firstSeriesKey].observations;
+        }
+    }
+
+    if (!observationsObject) {
+
+        return [];
+    }
+
+    const result = [];
+
+    for (
+        const [observationKey, observationData]
+        of Object.entries(observationsObject)
+    ) {
+
+        /*
+        Bei einer einzigen Beobachtungsdimension ist der Key
+        normalerweise einfach der Index des Datums.
+        */
+
+        const index =
+            Number(
+                observationKey
+                .split(":")
+                .pop()
+            );
+
+        const timeEntry =
+            timeValues[index];
+
+        if (!timeEntry) {
+            continue;
+        }
+
+        let date =
+            timeEntry.id
+            ||
+            timeEntry.name;
+
+        let value;
+
+        if (Array.isArray(observationData)) {
+            value = Number(observationData[0]);
+        } else {
+            value = Number(observationData);
+        }
+
+        if (
+            /^\d{4}-\d{2}-\d{2}$/.test(date)
+            &&
+            Number.isFinite(value)
+        ) {
+
+            result.push({
+                date: date,
+                value: value
+            });
+        }
+    }
+
+    result.sort(
+        (a, b) =>
+        a.date.localeCompare(b.date)
+    );
+
+    return result;
+}
+
+
+/* ============================================================
+   API URL ERSTELLEN
+   ============================================================ */
+
+function buildUrl(
+    currency,
+    start,
+    end,
+    format
+) {
+
+    const key =
+        `D.${currency}.EUR.BB.AC.000`;
+
+    const url =
+        `https://api.statistiken.bundesbank.de/rest/data/BBEX3/${key}`
+        +
+        `?startPeriod=${encodeURIComponent(start)}`
+        +
+        `&endPeriod=${encodeURIComponent(end)}`
+        +
+        `&detail=dataonly`
+        +
+        `&format=${format}`;
+
+    return {
+        key,
+        url
+    };
+}
+
+
+/* ============================================================
+   EINZELNEN API-ABRUF AUSFÜHREN
+   ============================================================ */
+
+async function fetchWithFormat(
+    currency,
+    start,
+    end,
+    format
+) {
+
+    const {
+        key,
+        url
+    } =
+        buildUrl(
+            currency,
+            start,
+            end,
+            format
+        );
+
+    let response;
+
+    try {
+
+        response =
+            await fetch(url);
+
+    }
+
+    catch (error) {
+
+        throw {
+            type: "NETWORK",
+            message: error.message,
+            httpStatus: "Netzwerk",
+            url: url,
+            key: key,
+            format: format
+        };
+    }
+
+    if (!response.ok) {
+
+        throw {
+            type: "HTTP",
+            message:
+                "Bundesbank HTTP "
+                + response.status,
+            httpStatus:
+                response.status,
+            url:
+                url,
+            key:
+                key,
+            format:
+                format
+        };
+    }
+
+    let observations;
+
+    if (format === "sdmx_csv") {
+
+        const text =
+            await response.text();
+
+        observations =
+            parseSdmxCsv(text);
+    }
+
+    else if (format === "sdmx_json") {
+
+        const json =
+            await response.json();
+
+        observations =
+            parseSdmxJson(json);
+    }
+
+    else {
+
+        throw new Error(
+            "Unbekanntes Datenformat."
+        );
+    }
+
+    return {
+        observations:
+            observations,
+        httpStatus:
+            response.status,
+        url:
+            url,
+        key:
+            key,
+        format:
+            format
+    };
+}
+
+
+/* ============================================================
+   ROBUSTER BUNDESBANK-ABRUF
+
+   Versuch 1: SDMX CSV
+   Versuch 2: SDMX JSON
+   ============================================================ */
+
+async function fetchCurrency(
+    currency,
+    start,
+    end
+) {
+
+    let firstError = null;
+
+    /*
+    Versuch 1: CSV
+    */
+    try {
+
+        return await fetchWithFormat(
+            currency,
+            start,
+            end,
+            "sdmx_csv"
+        );
+
+    }
+
+    catch (error) {
+
+        firstError = error;
+
+        console.warn(
+            currency,
+            "CSV fehlgeschlagen:",
+            error
+        );
+    }
+
+
+    /*
+    Versuch 2: JSON
+    */
+    try {
+
+        const result =
+            await fetchWithFormat(
+                currency,
+                start,
+                end,
+                "sdmx_json"
+            );
+
+        result.fallbackUsed = true;
+
+        result.firstError =
+            firstError;
+
+        return result;
+
+    }
+
+    catch (secondError) {
+
+        console.error(
+            currency,
+            "Auch JSON fehlgeschlagen:",
+            secondError
+        );
+
+        throw {
+            type:
+                "ALL_FORMATS_FAILED",
+
+            message:
+                "CSV und JSON fehlgeschlagen. "
+                +
+                "CSV: "
+                +
+                (
+                    firstError?.message
+                    ||
+                    "unbekannter Fehler"
+                )
+                +
+                " | JSON: "
+                +
+                (
+                    secondError?.message
+                    ||
+                    "unbekannter Fehler"
+                ),
+
+            httpStatus:
+                secondError?.httpStatus
+                ??
+                firstError?.httpStatus
+                ??
+                "—",
+
+            url:
+                secondError?.url
+                ??
+                firstError?.url
+                ??
+                "",
+
+            key:
+                secondError?.key
+                ??
+                firstError?.key
+                ??
+                "",
+
+            format:
+                "CSV + JSON"
+        };
+    }
+}
+
+
+/* ============================================================
+   GESCHÄFTSJAHRESZEITRAUM
+   ============================================================ */
+
+function reportingDates(monthValue) {
+
+    if (
+        !/^\d{4}-\d{2}$/.test(monthValue)
+    ) {
+
+        throw new Error(
+            "Bitte einen Berichtsmonat auswählen."
+        );
+    }
+
+    const [
+        year,
+        month
+    ] =
+        monthValue
+        .split("-")
+        .map(Number);
+
+    const requestedEnd =
+        new Date(
+            year,
+            month,
+            0
+        );
+
+    const now =
+        new Date();
+
+    now.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+    if (
+        requestedEnd > now
+    ) {
+
+        const isCurrentMonth =
+            now.getFullYear() === year
+            &&
+            now.getMonth() + 1 === month;
+
+        if (!isCurrentMonth) {
+
+            throw new Error(
+                "Für einen zukünftigen Berichtsmonat liegen noch keine Kurse vor."
+            );
+        }
+
+        requestedEnd.setTime(
+            now.getTime()
+        );
+    }
+
+    const fiscalYearStartYear =
+        month >= 10
+        ? year
+        : year - 1;
+
+    const fiscalYearStart =
+        new Date(
+            fiscalYearStartYear,
+            9,
+            1
+        );
+
+    return {
+        start:
+            isoDate(fiscalYearStart),
+        end:
+            isoDate(requestedEnd)
+    };
+}
+
+
+/* ============================================================
+   BERECHNUNG
+   ============================================================ */
+
+async function calculate() {
+
+    try {
+
+        calcBtn.disabled = true;
+
+        setStatus(
+            "Daten werden von der Deutschen Bundesbank geladen …"
+        );
+
+        const {
+            start,
+            end
+        } =
+            reportingDates(
+                monthInput.value
+            );
+
+        const results = {};
+
+
+        /*
+        EUR
+        */
+        results.EUR = {
+
+            avg: 1,
+            spot: 1,
+            count: 1,
+
+            firstDate: start,
+            lastDate: end,
+
+            httpStatus: "intern",
+            key: "EUR",
+            format: "intern",
+            url: "",
+
+            status: "OK",
+            note: "Basiswährung EUR"
+        };
+
+
+        const foreignCurrencies =
+            currencies.filter(
+                c => c !== "EUR"
+            );
+
+        let completed = 0;
+
+
+        /*
+        Bewusst nacheinander statt komplett parallel.
+        Das reduziert die Belastung der API und kann
+        sporadische Serverfehler vermeiden.
+        */
+        for (
+            const currency
+            of foreignCurrencies
+        ) {
+
+            try {
+
+                const response =
+                    await fetchCurrency(
+                        currency,
+                        start,
+                        end
+                    );
+
+                const obs =
+                    response.observations;
+
+
+                if (obs.length > 0) {
+
+                    const sum =
+                        obs.reduce(
+                            (
+                                total,
+                                observation
+                            ) =>
+                            total
+                            +
+                            observation.value,
+                            0
+                        );
+
+                    const avg =
+                        sum
+                        /
+                        obs.length;
+
+                    const spot =
+                        obs[
+                            obs.length - 1
+                        ].value;
+
+                    const firstDate =
+                        obs[0].date;
+
+                    const lastDate =
+                        obs[
+                            obs.length - 1
+                        ].date;
+
+
+                    let note = "";
+
+                    if (
+                        response.fallbackUsed
+                    ) {
+
+                        note +=
+                            "CSV fehlgeschlagen; JSON-Fallback erfolgreich. ";
+                    }
+
+                    if (
+                        lastDate !== end
+                    ) {
+
+                        note +=
+                            "Letzter verfügbarer Kurs: "
+                            +
+                            germanDate(lastDate)
+                            +
+                            ".";
+                    }
+
+                    results[currency] = {
+
+                        avg:
+                            avg,
+
+                        spot:
+                            spot,
+
+                        count:
+                            obs.length,
+
+                        firstDate:
+                            firstDate,
+
+                        lastDate:
+                            lastDate,
+
+                        httpStatus:
+                            response.httpStatus,
+
+                        key:
+                            response.key,
+
+                        format:
+                            response.format,
+
+                        url:
+                            response.url,
+
+                        status:
+                            response.fallbackUsed
+                            ?
+                            "OK (Fallback)"
+                            :
+                            "OK",
+
+                        note:
+                            note
+                    };
+
+                }
+
+                else {
+
+                    results[currency] = {
+
+                        avg: null,
+                        spot: null,
+                        count: 0,
+
+                        firstDate: null,
+                        lastDate: null,
+
+                        httpStatus:
+                            response.httpStatus,
+
+                        key:
+                            response.key,
+
+                        format:
+                            response.format,
+
+                        url:
+                            response.url,
+
+                        status:
+                            "KEINE DATEN",
+
+                        note:
+                            "Die Bundesbank lieferte für diesen Zeitraum keine Beobachtungen."
+                    };
+                }
+
+            }
+
+            catch (error) {
+
+                results[currency] = {
+
+                    avg: null,
+                    spot: null,
+                    count: 0,
+
+                    firstDate: null,
+                    lastDate: null,
+
+                    httpStatus:
+                        error.httpStatus
+                        ??
+                        "—",
+
+                    key:
+                        error.key
+                        ??
+                        "",
+
+                    format:
+                        error.format
+                        ??
+                        "—",
+
+                    url:
+                        error.url
+                        ??
+                        "",
+
+                    status:
+                        "FEHLER",
+
+                    note:
+                        error.message
+                        ||
+                        "Unbekannter Fehler"
+                };
+            }
+
+
+            completed++;
+
+            setStatus(
+                "Daten werden geladen … "
+                +
+                completed
+                +
+                "/"
+                +
+                foreignCurrencies.length
+                +
+                " Währungen"
+            );
+
+
+            /*
+            Kleine Pause zwischen den Anfragen.
+            */
+            await new Promise(
+                resolve =>
+                setTimeout(
+                    resolve,
+                    250
+                )
+            );
+        }
+
+
+        /* ====================================================
+           HAUPTTABELLE
+           ==================================================== */
+
+        body.innerHTML =
+            currencies.map(
+                currency => {
+
+                    const r =
+                        results[currency];
+
+                    const avgDiv =
+                        r?.avg
+                        ??
+                        null;
+
+                    const spotDiv =
+                        r?.spot
+                        ??
+                        null;
+
+                    const avgMul =
+                        avgDiv
+                        ?
+                        1 / avgDiv
+                        :
+                        null;
+
+                    const spotMul =
+                        spotDiv
+                        ?
+                        1 / spotDiv
+                        :
+                        null;
+
+
+                    return `
+                    <tr>
+
+                        <td class="currency">
+                        ${currency}
+                        </td>
+
+                        <td>
+                        ${fmt(avgMul)}
+                        </td>
+
+                        <td>
+                        ${fmt(avgDiv)}
+                        </td>
+
+                        <td>
+                        ${fmt(spotMul)}
+                        </td>
+
+                        <td>
+                        ${fmt(spotDiv)}
+                        </td>
+
+                    </tr>
+                    `;
+                }
+            )
+            .join("");
+
+
+        renderDiagnostics(
+            results,
+            start,
+            end
+        );
+
+
+        const errors =
+            currencies.filter(
+                currency =>
+                results[currency]?.status
+                ===
+                "FEHLER"
+            );
+
+        const missing =
+            currencies.filter(
+                currency =>
+                results[currency]?.status
+                ===
+                "KEINE DATEN"
+            );
+
+        const fallback =
+            currencies.filter(
+                currency =>
+                results[currency]?.status
+                ===
+                "OK (Fallback)"
+            );
+
+
+        if (errors.length > 0) {
+
+            setStatus(
+                "Berechnung abgeschlossen. Fehler bei: "
+                +
+                errors.join(", ")
+                +
+                ". Bitte Diagnose prüfen.",
+                "err"
+            );
+
+        }
+
+        else if (missing.length > 0) {
+
+            setStatus(
+                "Berechnung abgeschlossen. Keine Daten für: "
+                +
+                missing.join(", ")
+                +
+                ".",
+                "warning"
+            );
+
+        }
+
+        else if (fallback.length > 0) {
+
+            setStatus(
+                "Berechnung abgeschlossen. JSON-Fallback verwendet für: "
+                +
+                fallback.join(", ")
+                +
+                ".",
+                "ok"
+            );
+
+        }
+
+        else {
+
+            setStatus(
+                "Berechnung abgeschlossen. Zeitraum: "
+                +
+                germanDate(start)
+                +
+                " bis "
+                +
+                germanDate(end),
+                "ok"
+            );
+        }
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        setStatus(
+            error.message,
+            "err"
+        );
+    }
+
+    finally {
+
+        calcBtn.disabled = false;
+    }
+}
+
+
+/* ============================================================
+   DIAGNOSETABELLEN
+   ============================================================ */
+
+function renderDiagnostics(
+    results,
+    start,
+    end
+) {
+
+    diagnosticSummary.innerHTML =
+
+        "<strong>Verwendeter YTD-Zeitraum:</strong> "
+        +
+        germanDate(start)
+        +
+        " bis "
+        +
+        germanDate(end)
+        +
+        "<br><br>"
+        +
+        "CSV wird zuerst versucht. "
+        +
+        "Bei einem Fehler wird automatisch SDMX-JSON versucht.";
+
+
+    diagnosticBody.innerHTML =
+        currencies.map(
+            currency => {
+
+                const r =
+                    results[currency];
+
+                let cssClass =
+                    "diag-ok";
+
+                if (
+                    r.status ===
+                    "KEINE DATEN"
+                ) {
+
+                    cssClass =
+                        "diag-warning";
+                }
+
+                if (
+                    r.status ===
+                    "FEHLER"
+                ) {
+
+                    cssClass =
+                        "diag-error";
+                }
+
+
+                return `
+                <tr>
+
+                    <td class="currency">
+                    ${currency}
+                    </td>
+
+                    <td class="${cssClass}">
+                    ${r.status}
+                    </td>
+
+                    <td>
+                    ${r.format ?? "—"}
+                    </td>
+
+                    <td>
+                    ${r.count ?? 0}
+                    </td>
+
+                    <td>
+                    ${germanDate(r.firstDate)}
+                    </td>
+
+                    <td>
+                    ${germanDate(r.lastDate)}
+                    </td>
+
+                    <td>
+                    ${fmt(r.avg)}
+                    </td>
+
+                    <td>
+                    ${fmt(r.spot)}
+                    </td>
+
+                </tr>
+                `;
+            }
+        )
+        .join("");
+
+
+    technicalBody.innerHTML =
+        currencies.map(
+            currency => {
+
+                const r =
+                    results[currency];
+
+                return `
+                <tr>
+
+                    <td class="currency">
+                    ${currency}
+                    </td>
+
+                    <td>
+                    ${r.httpStatus ?? "—"}
+                    </td>
+
+                    <td>
+                    ${r.key || "—"}
+                    </td>
+
+                    <td>
+                    ${r.format || "—"}
+                    </td>
+
+                    <td class="api-url">
+                    ${r.url || "—"}
+                    </td>
+
+                    <td>
+                    ${r.note || "—"}
+                    </td>
+
+                </tr>
+                `;
+            }
+        )
+        .join("");
+}
+
+
+/* ============================================================
+   DIAGNOSE EIN-/AUSBLENDEN
+   ============================================================ */
+
+diagBtn.addEventListener(
+    "click",
+    function() {
+
+        const visible =
+            diagnostics.style.display
+            ===
+            "block";
+
+        diagnostics.style.display =
+            visible
+            ?
+            "none"
+            :
+            "block";
+
+        diagBtn.textContent =
+            visible
+            ?
+            "Diagnose anzeigen"
+            :
+            "Diagnose ausblenden";
+    }
+);
+
+
+/* ============================================================
+   BUTTON
+   ============================================================ */
+
+calcBtn.addEventListener(
+    "click",
+    calculate
+);
+
+</script>
+
+</body>
+</html>
